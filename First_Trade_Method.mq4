@@ -15,26 +15,28 @@
 //+------------------------------------------------------------------+
 void OnStart()
   {
+  
    _ALERT();
    _CheckDay();
+   IsTradeallowed();
    _BAlance_Acc();
-   _Trade_Method();
+   _CheckLot();
    _CheckPip();
-   _getTakeProfit(ItIsALongPosition);
-   _getStopLoss(ItIsALongPosition);
    _checkBars();
+   _Trade_Method();
    _mavaLue();
    _rsiCheck();
-   _volumeCheck();
    _macdCheck();
-  }
+   _volumeCheck();
+   _BBCheck();
+   _getTakeProfit(ItIsALongPosition);
+   _getStopLoss(ItIsALongPosition);
+   
+   
+  
+   }
 //+------------------------------------------------------------------+
 
-
-
-
-
-double pipValue;
 input bool ItIsALongPosition = true;
 input int Moving_Average_Period = 21; 
 input int rsiPeriod = 14;
@@ -44,6 +46,19 @@ input ENUM_APPLIED_PRICE PRICE_Declare = 5;
 input int FastEMAmAcD = 12;
 input int SlowEMAmAcD = 26;
 input int SignalSMAmAcD = 9;
+input int BBperid = 20;
+input double BBdeviason = 1.0 ;
+input double BBdeviason2 = 4.0 ;
+
+double pipValue;
+double bblower1 = iBands(NULL,0,BBperid,BBdeviason,0,PRICE_CLOSE,2,0);
+double bbupper1 = iBands(NULL,0,BBperid,BBdeviason,0,PRICE_CLOSE,1,0);
+double bbmid1 = iBands(NULL,0,BBperid,BBdeviason,0,PRICE_CLOSE,0,0);
+double bblower2 = iBands(NULL,0,BBperid,BBdeviason2,0,PRICE_CLOSE,2,0);
+double bbupper2 = iBands(NULL,0,BBperid,BBdeviason2,0,PRICE_CLOSE,1,0);
+double LotSize = SymbolInfoDouble(NULL,SYMBOL_TRADE_CONTRACT_SIZE);
+double MinLotSize = MarketInfo(NULL,23);
+
 
 
 
@@ -72,7 +87,7 @@ double _getStopLoss(bool ItIsALongPositon)
      {
        StopLossPricee = Bid + (pipValue * 30);
      }
-     Alert("Stop Loss is :",StopLossPricee);
+     Alert("MAX Stop Loss is :",StopLossPricee);
      return StopLossPricee;
 }
 
@@ -89,7 +104,7 @@ double _getTakeProfit(bool ItIsALongPositon)
      {
         TakeProfitPricee = Bid - (pipValue * 300);
      }
-     Alert("Take Profit is :",TakeProfitPricee);
+     Alert("MAX Take Profit is :",TakeProfitPricee);
      return TakeProfitPricee;
 }
 
@@ -208,11 +223,37 @@ void _macdCheck()
    
    if(macDValue < macDsignalValue && macDValue + macDsignalValue >= (-300))
      {
-      Alert("Hello"); //Buy signal
+      Alert("MACD say to Buy"); //Buy signal
+      int orderID = OrderSend(NULL,OP_BUYLIMIT,LotSize,Ask,10,stopLossPrice,takeProfitPrice);
+         if(orderID < 0)
+     {
+      Alert("Can't Open Sell Position, OrderERROR is  : ",GetLastError());
+     }
+   else if(orderID == 0)
+     {
+      Alert("Can't Open Sell Position, Market is Closed, OrderERROR is : ",GetLastError());
+     }
+   else
+     {
+      Alert("Open Sell Position Successfully With This Ticker Number : ",orderID);
+     }
      }
    else if(macDValue > macDsignalValue && macDsignalValue + macDValue >= (-300))
      {
-      Alert("Bye");  //Sell Signal
+      Alert("MACD say to Sell");  //Sell Signal
+      int orderID = OrderSend(NULL,OP_SELLLIMIT,LotSize,Bid,10,stopLossPrice,takeProfitPrice);
+   if(orderID < 0)
+     {
+      Alert("Can't Open Sell Position, OrderERROR is  : ",GetLastError());
+     }
+   else if(orderID == 0)
+     {
+      Alert("Can't Open Sell Position, Market is Closed, OrderERROR is : ",GetLastError());
+     }
+   else
+     {
+      Alert("Open Sell Position Successfully With This Ticker Number : ",orderID);
+     }
      }
 }
 
@@ -226,7 +267,82 @@ void _volumeCheck()
       Alert("3 volume is : ",ThirdVolume);
 }
 
-//void _stoCheck()
-//{
-  //    double stock = iStochastic(NULL,Trade_TIMEFRAME,
-//}
+
+void _BBCheck()
+{
+if(Ask < bblower1)//buying
+  {
+  Alert("Price is bellow bblower1 , Sending Buy order");
+   double stopLossPrice = bblower2;
+   double takeProfitPrice = bbmid1;
+   Alert("Entry Price is : ",Ask);
+   Alert("Stop Loss is : ",MathRound(NormalizeDouble(stopLossPrice,_Digits)));
+   Alert("Take profit is : ",MathRound(NormalizeDouble(takeProfitPrice,_Digits)));
+   int orderID = OrderSend(NULL,OP_BUYLIMIT,LotSize,Ask,10,stopLossPrice,takeProfitPrice);
+   if(orderID < 0)
+     {
+      Alert("Can't Open Buy Position OrderERROR is : ",GetLastError());
+     }
+   else if(orderID == 0)
+     {
+      Alert("Can't Open Sell Position, Market is Closed OrderERROR is : ",GetLastError());
+     }
+   else
+     {
+      Alert("Open Buy Position Successfully With This Ticker Number : ",orderID);
+     }
+  }
+  
+  
+  
+else if(Bid > bbupper1)//selling
+  {
+  Alert("Price is upper that bbupper1 , Sending Sell order");
+   double stopLossPrice = bbupper2;
+   double takeProfitPrice = bbmid1;
+   Alert("Entry Price is : ",Bid);
+   Alert("Stop Loss is : ",MathRound(NormalizeDouble(stopLossPrice,_Digits)));
+   Alert("Take profit is : ",MathRound(NormalizeDouble(takeProfitPrice,_Digits)));
+   int orderID = OrderSend(NULL,OP_SELLLIMIT,LotSize,Bid,10,stopLossPrice,takeProfitPrice);
+   if(orderID < 0)
+     {
+      Alert("Can't Open Sell Position, OrderERROR is  : ",GetLastError());
+     }
+   else if(orderID == 0)
+     {
+      Alert("Can't Open Sell Position, Market is Closed, OrderERROR is : ",GetLastError());
+     }
+   else
+     {
+      Alert("Open Sell Position Successfully With This Ticker Number : ",orderID);
+     }
+  }
+}
+
+
+bool IsTradeallowed()
+{
+   if(!IsTradeAllowed())
+     {
+      Alert("Expert Advisor Can't run, Please check Auto Trading option");
+      return false;
+     }
+   else if(!IsTradeAllowed(Symbol(),TimeCurrent()))
+     {
+        Alert("Expert Advisor Can't run, Because of the current symbol or the current time");    
+        return false;
+     }
+   else
+     {
+        return true;
+     }
+}
+
+
+void _CheckLot()
+{
+    Alert("Lot Size of account is : ",LotSize);
+    Alert("Minimum Lot Size of account is : ",MinLotSize);
+}
+
+
